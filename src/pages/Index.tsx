@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import LoginForm from '../components/LoginForm';
 import PhotoUploader from '../components/PhotoUploader';
 import ListingSelector from '../components/ListingSelector';
+import ListingBrowser from '../components/ListingBrowser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [step, setStep] = useState<'login' | 'upload' | 'select'>('login');
+  const [step, setStep] = useState<'login' | 'browse' | 'upload' | 'select'>('login');
   const [photos, setPhotos] = useState<{ id: string, file: File, preview: string, corrected: string }[]>([]);
   const [selectedListings, setSelectedListings] = useState<string[]>([]);
   const { toast } = useToast();
@@ -18,12 +19,21 @@ const Index = () => {
     console.log(`Login attempt with ${username}`);
     setTimeout(() => {
       setIsLoggedIn(true);
-      setStep('upload');
+      setStep('browse');
       toast({
         title: "Login Successful",
         description: "You have successfully logged into your eBay account.",
       });
     }, 1500);
+  };
+
+  const handleListingsBrowsed = (listingsIds: string[]) => {
+    setSelectedListings(listingsIds);
+    setStep('upload');
+    toast({
+      title: "Listings Selected",
+      description: `${listingsIds.length} listing(s) selected for photo orientation fixing.`,
+    });
   };
 
   const handlePhotosUploaded = (newPhotos: { id: string, file: File, preview: string, corrected: string }[]) => {
@@ -43,6 +53,14 @@ const Index = () => {
       title: "Photos Updated",
       description: `Successfully updated ${listings.length} listing(s) with corrected photos.`,
     });
+  };
+
+  const getCurrentStepTab = () => {
+    if (!isLoggedIn) return null;
+    if (step === 'browse') return 'browse';
+    if (step === 'upload') return 'upload';
+    if (step === 'select') return 'select';
+    return 'browse';
   };
 
   return (
@@ -92,8 +110,19 @@ const Index = () => {
                 </h2>
               </div>
               <div className="h-px flex-1 bg-gray-200 mx-4"></div>
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 'upload' ? 'bg-ebay-primary text-white' : (photos.length > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600')}`}>
+              
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 'browse' ? 'bg-ebay-primary text-white' : (selectedListings.length > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600')}`}>
                 2
+              </div>
+              <div className="ml-4 flex-1">
+                <h2 className={`text-sm font-medium ${step === 'browse' ? 'text-ebay-primary' : (selectedListings.length > 0 ? 'text-green-600' : 'text-gray-600')}`}>
+                  Browse Listings
+                </h2>
+              </div>
+              <div className="h-px flex-1 bg-gray-200 mx-4"></div>
+              
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 'upload' ? 'bg-ebay-primary text-white' : (photos.length > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600')}`}>
+                3
               </div>
               <div className="ml-4 flex-1">
                 <h2 className={`text-sm font-medium ${step === 'upload' ? 'text-ebay-primary' : (photos.length > 0 ? 'text-green-600' : 'text-gray-600')}`}>
@@ -101,12 +130,13 @@ const Index = () => {
                 </h2>
               </div>
               <div className="h-px flex-1 bg-gray-200 mx-4"></div>
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 'select' ? 'bg-ebay-primary text-white' : (selectedListings.length > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600')}`}>
-                3
+              
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 'select' ? 'bg-ebay-primary text-white' : 'bg-gray-200 text-gray-600'}`}>
+                4
               </div>
               <div className="ml-4">
-                <h2 className={`text-sm font-medium ${step === 'select' ? 'text-ebay-primary' : (selectedListings.length > 0 ? 'text-green-600' : 'text-gray-600')}`}>
-                  Update Listings
+                <h2 className={`text-sm font-medium ${step === 'select' ? 'text-ebay-primary' : 'text-gray-600'}`}>
+                  Confirm Changes
                 </h2>
               </div>
             </div>
@@ -119,12 +149,21 @@ const Index = () => {
             )}
             
             {isLoggedIn && (
-              <Tabs defaultValue={step === 'upload' ? 'upload' : 'select'} className="w-full">
-                <TabsList className="grid grid-cols-2 mb-6">
+              <Tabs defaultValue={getCurrentStepTab()} className="w-full">
+                <TabsList className="grid grid-cols-3 mb-6">
+                  <TabsTrigger 
+                    value="browse" 
+                    onClick={() => setStep('browse')}
+                    className="data-[state=active]:bg-ebay-primary data-[state=active]:text-white"
+                    disabled={!isLoggedIn}
+                  >
+                    Browse Listings
+                  </TabsTrigger>
                   <TabsTrigger 
                     value="upload" 
                     onClick={() => setStep('upload')}
                     className="data-[state=active]:bg-ebay-primary data-[state=active]:text-white"
+                    disabled={!isLoggedIn || selectedListings.length === 0}
                   >
                     Upload Photos
                   </TabsTrigger>
@@ -132,10 +171,15 @@ const Index = () => {
                     value="select" 
                     onClick={() => setStep('select')}
                     className="data-[state=active]:bg-ebay-primary data-[state=active]:text-white"
+                    disabled={!isLoggedIn || photos.length === 0}
                   >
-                    Select Listings
+                    Confirm Changes
                   </TabsTrigger>
                 </TabsList>
+                
+                <TabsContent value="browse">
+                  <ListingBrowser onListingsSelected={handleListingsBrowsed} />
+                </TabsContent>
                 
                 <TabsContent value="upload">
                   <PhotoUploader onPhotosProcessed={handlePhotosUploaded} />
